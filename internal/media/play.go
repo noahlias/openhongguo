@@ -38,6 +38,10 @@ type Request struct {
 	// DurationSeconds is the episode length; it lets Play tell a finished
 	// episode from a closed player.
 	DurationSeconds int
+	// NoTerminal keeps mpv from reading the terminal for key presses, for a
+	// caller that draws on it. The player's stdin is /dev/null and its
+	// output is read by Play in any case.
+	NoTerminal bool
 }
 
 // Jump values a viewer can ask for while an episode plays (mpv only).
@@ -126,6 +130,9 @@ func (l *Launcher) Play(ctx context.Context, req Request) (Result, error) {
 		}
 		defer os.Remove(script)
 		args := []string{"--no-resume-playback", "--script=" + script}
+		if req.NoTerminal {
+			args = append(args, "--input-terminal=no")
+		}
 		if key != "" {
 			args = append(args, "--demuxer-lavf-o=decryption_key="+key)
 		}

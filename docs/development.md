@@ -62,6 +62,18 @@ go test -tags live -run TestLiveContract -v ./internal/contract
 
 > **注意**：样本只保留解析器读取的字段。这样，无关字段的变化不会使检查失败。
 
+## 代码结构
+
+命令行和全屏界面共用一套播放和下载逻辑：
+
+| 包 | 内容 |
+|---|---|
+| `internal/playback` | 解析分集、选择流、续播位置、连续播放、下载队列。不输出任何文字，用事件报告进度 |
+| `internal/cliapp` | 命令行。把事件打印成文字 |
+| `internal/tui` | 全屏界面（Bubble Tea v2）。把事件显示为状态栏和提示 |
+
+修改播放或下载的行为时，改 `internal/playback`，并同时运行 `internal/cliapp` 和 `internal/tui` 的测试。
+
 ## 持续集成
 
 每次推送和每个 pull request 都运行 `.github/workflows/ci.yml`。持续集成不访问网络。各平台的 SDK 用 `testdata/protocol` 的样本回放测试。

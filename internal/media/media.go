@@ -34,9 +34,15 @@ type Launcher struct {
 
 // New returns the default launcher.
 func New() *Launcher {
+	return NewWithOutput(os.Stdout, os.Stderr)
+}
+
+// NewWithOutput returns the default launcher with the player's output sent
+// to out and errw instead of the process streams.
+func NewWithOutput(out, errw io.Writer) *Launcher {
 	return &Launcher{
-		Out:      os.Stdout,
-		Err:      os.Stderr,
+		Out:      out,
+		Err:      errw,
 		Client:   &http.Client{Timeout: 0, Transport: &http.Transport{ResponseHeaderTimeout: 30 * time.Second}},
 		LookPath: exec.LookPath,
 	}

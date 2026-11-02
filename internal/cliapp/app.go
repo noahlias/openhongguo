@@ -9,6 +9,7 @@ import (
 
 	"github.com/beilunyang/openhongguo/internal/history"
 	"github.com/beilunyang/openhongguo/internal/media"
+	"github.com/beilunyang/openhongguo/internal/playback"
 	"github.com/beilunyang/openhongguo/sdk"
 	"github.com/beilunyang/openhongguo/sdk/model"
 )
@@ -113,7 +114,9 @@ func Run(ctx context.Context, args []string, d Dependencies) int {
 	return ExitFailure
 }
 
-var errUsage = errors.New("invalid arguments")
+// errUsage is the engine's ErrInvalid, so a caller mistake found there
+// prints and exits like one found here.
+var errUsage = playback.ErrInvalid
 
 func usage(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", errUsage, fmt.Sprintf(format, args...))
@@ -179,6 +182,8 @@ func dispatch(ctx context.Context, args []string, d Dependencies) error {
 		return cmdContinue(ctx, args[1:], d)
 	case "download":
 		return cmdDownload(ctx, args[1:], d)
+	case "tui":
+		return usage("tui needs an interactive terminal")
 	default:
 		return usage("unknown command %q", args[0])
 	}
@@ -218,6 +223,7 @@ const helpText = `ohg — anonymous short-drama catalog and playback
   ohg history clear
   ohg device show
   ohg device reset
+  ohg tui                 full-screen interface; plain ohg opens it in a terminal
 
 Every command is anonymous. There is no login.
 

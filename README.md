@@ -53,7 +53,7 @@ SDK 用匿名设备发送所有请求，不需要登录。Go 以外的 SDK 都�
 
 | 语言 | 最低版本 |
 |---|---|
-| Go | 1.22 |
+| Go | 1.26 |
 | Node.js | 20 |
 | Android | 5.0（API 21）；Flutter 是 7.0（API 24） |
 | iOS | 13；React Native 是 15.1，Flutter 是 15 |

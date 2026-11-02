@@ -17,8 +17,8 @@ openhongguo-cli 是 openhongguo 的命令行工具，命令名是 `ohg`。它可
    | 方式 | 说明 |
    |---|---|
    | 下载二进制 | 从 [GitHub Releases](https://github.com/beilunyang/openhongguo/releases) 下载对应平台的 `openhongguo-cli_*` 压缩包。macOS 上解压后执行一次 `xattr -d com.apple.quarantine ohg` |
-   | `go install` | `go install github.com/beilunyang/openhongguo/cmd/ohg@latest`。需要 Go 1.22 或更高版本 |
-   | 从源码构建 | `go build -o bin/ohg ./cmd/ohg`。需要 Go 1.22 或更高版本 |
+   | `go install` | `go install github.com/beilunyang/openhongguo/cmd/ohg@latest`。需要 Go 1.26 或更高版本 |
+   | 从源码构建 | `go build -o bin/ohg ./cmd/ohg`。需要 Go 1.26 或更高版本 |
 
 2. 安装外部程序。下表列出各用途需要的程序。
 
@@ -200,13 +200,72 @@ openhongguo-cli 是 openhongguo 的命令行工具，命令名是 `ohg`。它可
 | `rank` | 每个请求返回一批不同的书。名次只在当前页中有效 |
 | `rank --activity` | 如果活动没有开放，活动榜单没有条目 |
 
+### 全屏界面（TUI）
+
+在终端中运行 `ohg`（不带参数）或 `ohg tui`，打开全屏界面。界面可以浏览上面的所有内容，播放时界面保持可用，下载在后台排队。
+
+| 启动方式 | 结果 |
+|---|---|
+| `ohg`，标准输入和输出都是终端 | 打开全屏界面 |
+| `ohg`，输出被管道或重定向 | 显示帮助，与以前相同 |
+| `ohg tui` | 打开全屏界面。如果没有终端，报告错误并退出 |
+
+界面分三栏：左边是栏目，中间是列表，右边是选中条目的详情。终端窄于 100 列时不显示详情栏，窄于 72 列时不显示栏目栏。
+
+| 栏目 | 内容 |
+|---|---|
+| 1 继续观看 | 最近看的短剧。按 `r` 续播 |
+| 2 推荐 | 各频道的推荐，滚动到底部时自动加载下一页 |
+| 3 热搜 | 猜你想搜、热搜榜和话题。打开话题即搜索该话题 |
+| 4 排行榜 | 短剧榜单。`c` 切换内容，`b` 或 `[` `]` 切换榜单。打开演员行显示演员主页和作品 |
+| 5 筛选 | 选择类型，再用筛选项缩小结果 |
+| 6 上新 | 上新日历。`[` `]` 切换日期 |
+| 7 观看记录 | 全部观看记录。按 `D` 清空 |
+| 8 下载 | 下载队列和进度。`c` 取消正在下载的任务，`x` 移除任务 |
+| 9 书城 | 书城榜单。按 `c` 输入分类 ID，打开分类页。书只能浏览，不能播放或下载 |
+| 0 设置 | 播放器、画质、连续播放、下载目录、并发下载数、封面、主题和语言 |
+
+全局按键：
+
+| 按键 | 作用 |
+|---|---|
+| `j` `k` 或方向键 | 移动 |
+| `enter` | 打开 |
+| `esc` 或 `q` | 返回。在栏目中按 `q` 退出 |
+| `tab` | 在栏目和列表之间切换焦点 |
+| `1`–`9`、`0` | 跳到栏目 |
+| `/` | 搜索。输入时显示联想词；带 `→` 的联想词直接打开短剧 |
+| `S` | 停止播放 |
+| `ctrl+l` | 切换中文和英文 |
+| `?` | 显示当前页面的按键 |
+| `ctrl+c` | 退出 |
+
+在剧集页，`enter` 播放选中的一集，`a` 从这一集开始连续播放，`r` 续播，`d` 下载（输入集数范围，例如 `1-10,12`），`[` `]` 切换季，`tab` 切换到相关推荐。分集网格中，`>` 是上次看到的一集，`.` 是已经看过的，`*` 是新的，`x` 是匿名设备不能播放的。
+
+播放器在界面之外的窗口中播放。播放和下载的方式与 `ohg play`、`ohg download` 相同，观看记录也是同一个 `history.json`。
+
+详情栏显示封面。启动时会询问终端是否支持 kitty 图形协议。如果支持（例如 kitty、ghostty，或转发该协议的复用器），封面用 Unicode 占位符显示为图片；否则用半格字符显示。tmux 默认不转发该协议，所以在 tmux 中显示半格字符。服务端的封面是 HEIC 格式，需要 `ffmpeg` 解码。没有 `ffmpeg` 时不显示封面。
+
+设置保存在配置目录的 `settings.json` 中，文件权限是 0600。每次修改设置都会保存。
+
+| 字段 | 可用的值 | 默认值 |
+|---|---|---|
+| `language` | `zh`、`en` | `zh` |
+| `theme` | `auto`、`dark`、`light`、`mono` | `auto` |
+| `player` | `auto`、`mpv`、`ffplay`、`vlc`、`open`、`xdg-open` | `auto` |
+| `quality` | `best`、`worst`、`360p`、`480p`、`540p`、`720p`、`1080p` | `best` |
+| `autoplay` | `true`、`false` | `false` |
+| `download_dir` | 目录。每部剧保存在其中以剧名命名的子目录。空字符串表示当前目录 | 空 |
+| `jobs` | 并发下载数 | `3` |
+| `covers` | `true`、`false` | `true` |
+
 ## 配置
 
 用环境变量配置 `ohg`。通常不需要设置这些变量。
 
 | 环境变量 | 作用 |
 |---|---|
-| `OHG_CONFIG_DIR` | 配置目录。目录中保存设备档案 `anonymous.json` 和观看记录 `history.json` |
+| `OHG_CONFIG_DIR` | 配置目录。目录中保存设备档案 `anonymous.json`、观看记录 `history.json` 和全屏界面的设置 `settings.json` |
 | `OHG_CENC_KEY` | 手动指定一集的内容密钥。通常不需要 |
 | `OHG_API_ORIGIN` | 读取类接口的地址 |
 | `OHG_REGISTER_ORIGIN` | 设备注册接口的地址 |

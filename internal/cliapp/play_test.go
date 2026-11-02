@@ -11,6 +11,7 @@ import (
 
 	"github.com/beilunyang/openhongguo/internal/history"
 	mediapkg "github.com/beilunyang/openhongguo/internal/media"
+	"github.com/beilunyang/openhongguo/internal/playback"
 	"github.com/beilunyang/openhongguo/sdk"
 	"github.com/beilunyang/openhongguo/sdk/model"
 )
@@ -201,15 +202,15 @@ func TestDownloadDefaultsToTitleDirAndReportsFailures(t *testing.T) {
 }
 
 func TestParseEpisodeRange(t *testing.T) {
-	got, err := parseEpisodeRange("3, 1-2,2", 5)
+	got, err := playback.ParseEpisodeRange("3, 1-2,2", 5)
 	if err != nil || len(got) != 3 || got[0] != 1 || got[2] != 3 {
 		t.Fatalf("got %v err %v", got, err)
 	}
-	if all, _ := parseEpisodeRange("", 4); len(all) != 4 || all[3] != 4 {
+	if all, _ := playback.ParseEpisodeRange("", 4); len(all) != 4 || all[3] != 4 {
 		t.Fatalf("all = %v", all)
 	}
 	for _, bad := range []string{"0", "2-1", "x", "1-9"} {
-		if _, err := parseEpisodeRange(bad, 5); err == nil {
+		if _, err := playback.ParseEpisodeRange(bad, 5); err == nil {
 			t.Fatalf("%q accepted", bad)
 		}
 	}

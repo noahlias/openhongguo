@@ -1146,7 +1146,6 @@ func TestDiscoverAllFollowsCursorsAndDropsRepeats(t *testing.T) {
 	}
 }
 
-// rejectingService fails the first call with a device rejection.
 func TestShortRankFilterAndCuesCommands(t *testing.T) {
 	var out bytes.Buffer
 	svc := &captureService{}

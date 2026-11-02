@@ -83,31 +83,6 @@ func cmdEpisodes(ctx context.Context, args []string, d Dependencies) error {
 	return printValue(d.Stdout, page, f.json)
 }
 
-func findEpisode(items []model.Episode, number int) (model.Episode, bool) {
-	for _, e := range items {
-		if e.Number == number {
-			return e, true
-		}
-	}
-	return model.Episode{}, false
-}
-
-// drmError names the protection scheme so the caller can tell a protected
-// stream from a missing one. It never includes keys or per-segment data.
-func drmError(p *model.Playback) error {
-	scheme := ""
-	for _, s := range p.Streams {
-		if s.Encryption != "" {
-			scheme = s.Encryption
-			break
-		}
-	}
-	if scheme == "" {
-		return fmt.Errorf("%w: pass --key HEX, set OHG_CENC_KEY, or leave decryption enabled", sdk.ErrDRMProtected)
-	}
-	return fmt.Errorf("%w (%s): pass --key HEX, set OHG_CENC_KEY, or leave decryption enabled", sdk.ErrDRMProtected, scheme)
-}
-
 func cmdAlbum(ctx context.Context, args []string, d Dependencies) error {
 	if err := requireService(d); err != nil {
 		return err

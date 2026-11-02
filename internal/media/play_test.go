@@ -163,6 +163,24 @@ func TestPlayMPVDecryptsAndReportsEnd(t *testing.T) {
 			t.Fatalf("missing %q in mpv args:\n%s", want, args)
 		}
 	}
+	if strings.Contains(args, "--input-terminal=no") {
+		t.Fatalf("terminal input disabled without NoTerminal:\n%s", args)
+	}
+}
+
+func TestPlayMPVNoTerminal(t *testing.T) {
+	l, dir := streamLauncher(t, "mpv", "", recordArgs+mpvEnd("eof", "100.000"))
+	req := Request{URL: "https://media.invalid/v.mp4", Player: "mpv", NoTerminal: true}
+	res, err := l.Play(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Position != 100 {
+		t.Fatalf("position = %v", res.Position)
+	}
+	if args := readArgs(t, dir, "mpv"); !strings.Contains(args, "--input-terminal=no") {
+		t.Fatalf("missing --input-terminal=no in mpv args:\n%s", args)
+	}
 }
 
 func TestPlayMPVQuitAndError(t *testing.T) {
