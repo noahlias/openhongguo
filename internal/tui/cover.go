@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -28,6 +29,8 @@ const (
 	coverEntries  = 64
 	coverCols     = 20
 	coverMaxRows  = 14
+	// coverMaxPixels refuses images whose decoded size dwarfs their bytes.
+	coverMaxPixels = 4096 * 4096
 	// Kitty image IDs are sent as a 24-bit foreground color, so they start
 	// well above the small IDs other programs tend to use.
 	kittyIDBase = 0x4F4800
@@ -64,8 +67,10 @@ type coverMsg struct {
 // drawnCover is a cover ready for the frame.
 type drawnCover struct {
 	coverMsg
-	// cells is what the frame shows: half-blocks, or kitty placeholders.
+	// cells is what the frame shows: half-blocks, or blank cells whose
+	// first carries place.
 	cells string
+	place string
 }
 
 // covers keeps the drawn covers, oldest out first. A URL that failed is
@@ -189,14 +194,33 @@ func (c *covers) render(msg coverMsg) (d drawnCover, transmit string, err error)
 	}
 	var out strings.Builder
 	err = kitty.EncodeGraphics(&out, msg.img, &kitty.Options{
-		Action: kitty.TransmitAndPut, Format: kitty.PNG, ID: msg.id, Quiet: 2,
-		Columns: coverCols, Rows: msg.rows, VirtualPlacement: true, Chunk: true,
+		Action: kitty.Transmit, Transmission: kitty.Direct, Format: kitty.PNG, ID: msg.id, Quiet: 2, Chunk: true,
 	})
 	if err != nil {
 		return d, "", err
 	}
-	d.cells = placeholders(msg.id, coverCols, msg.rows)
+	d.place = kittyPlace(msg.id, msg.rows)
+	blank := strings.Repeat(" ", coverCols)
+	d.cells = d.place + blank + strings.Repeat("\n"+blank, msg.rows-1)
 	return d, out.String(), nil
+}
+
+// isPlacement reports whether seq places one of the drawn covers.
+func (c *covers) isPlacement(seq string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, d := range c.drawn {
+		if d.place == seq {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *covers) kitty() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.mode == graphicsKitty
 }
 
 // draw returns the cover's lines, or nil when it is not loaded.
@@ -222,6 +246,15 @@ func (c *covers) forget() string {
 		b.WriteString(kittyDelete(m.id))
 	}
 	return b.String()
+}
+
+// kittyClear removes every image placed on screen but keeps the images.
+var kittyClear = ansi.KittyGraphics(nil, "a=d", "d=a", "q=2")
+
+// kittyPlace puts image id at the cursor without moving it, so the
+// renderer's idea of the cursor stays right.
+func kittyPlace(id, rows int) string {
+	return ansi.KittyGraphics(nil, "a=p", fmt.Sprintf("i=%d,p=1,c=%d,r=%d,C=1,q=2", id, coverCols, rows))
 }
 
 func kittyDelete(id int) string {
@@ -259,45 +292,57 @@ func getImage(ctx context.Context, client *http.Client, ffmpeg, url string) (ima
 	if err != nil {
 		return nil, err
 	}
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if !errors.Is(err, image.ErrFormat) || ffmpeg == "" {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	switch {
+	case err == nil:
+		if cfg.Width*cfg.Height > coverMaxPixels {
+			return nil, fmt.Errorf("cover: image is %dx%d", cfg.Width, cfg.Height)
+		}
+		img, _, err := image.Decode(bytes.NewReader(data))
 		return img, err
+	case errors.Is(err, image.ErrFormat) && ffmpeg != "" && isISOMedia(data):
+		return decodeWithFFmpeg(ctx, ffmpeg, data)
 	}
-	return decodeWithFFmpeg(ctx, ffmpeg, data)
+	return nil, err
+}
+
+// isISOMedia reports whether data starts like an HEIC file: an ISO media
+// box of type ftyp.
+func isISOMedia(data []byte) bool {
+	return len(data) >= 12 && string(data[4:8]) == "ftyp"
 }
 
 // decodeWithFFmpeg turns a format Go cannot read (HEIC) into a small PNG.
+// The input is a temporary file, not a pipe: ffmpeg seeks back to the
+// image data after reading the boxes. The demuxer is named, drefs are off
+// and only files are allowed, so data cannot make ffmpeg open other files
+// or URLs the way a probed playlist could.
 func decodeWithFFmpeg(ctx context.Context, ffmpeg string, data []byte) (image.Image, error) {
-	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
-		"-frames:v", "1", "-vf", "scale=240:-2", "-f", "image2pipe", "-c:v", "png", "pipe:1")
-	cmd.Stdin = bytes.NewReader(data)
+	f, err := os.CreateTemp("", "ohg-cover-*.heic")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(f.Name())
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error",
+		"-protocol_whitelist", "file", "-f", "mov", "-enable_drefs", "0", "-i", f.Name(), "-frames:v", "1",
+		"-vf", "scale=240:720:force_original_aspect_ratio=decrease", "-f", "image2pipe", "-c:v", "png", "pipe:1")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
+	if err == nil && len(out) == 0 {
+		err = errors.New("no image")
+	}
 	if err != nil {
 		return nil, fmt.Errorf("cover: ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return png.Decode(bytes.NewReader(out))
-}
-
-// placeholders are the cells a kitty terminal replaces with image id: the
-// foreground color carries the id, the diacritics the row and column.
-func placeholders(id, cols, rows int) string {
-	fg := fmt.Sprintf("\x1b[38;2;%d;%d;%dm", id>>16&0xff, id>>8&0xff, id&0xff)
-	var b strings.Builder
-	for r := 0; r < rows; r++ {
-		if r > 0 {
-			b.WriteByte('\n')
-		}
-		b.WriteString(fg)
-		for c := 0; c < cols; c++ {
-			b.WriteRune(kitty.Placeholder)
-			b.WriteRune(kitty.Diacritic(r))
-			b.WriteRune(kitty.Diacritic(c))
-		}
-		b.WriteString("\x1b[39m")
-	}
-	return b.String()
 }
 
 // halfBlocks draws img one cell per two stacked pixels: the upper pixel is

@@ -131,6 +131,9 @@ func (p *seriesPage) Update(msg tea.Msg) tea.Cmd {
 		if h, ok := p.e.watched(p.id); ok {
 			p.grid.cursor = indexOfEpisode(p.episodes, h.Episode)
 		}
+		if p.series != nil && p.e.coversOn() {
+			return p.e.covers.fetch(p.e.ctx, p.series.CoverURL)
+		}
 		return nil
 	case promptDoneMsg:
 		if msg.id == "download:"+p.id && msg.ok {
@@ -276,46 +279,19 @@ func (p *seriesPage) buildRelated() {
 }
 
 func (p *seriesPage) View(w, h int) string {
-	tr, th, lang := p.e.tr, p.e.theme, p.e.lang()
+	tr, th := p.e.tr, p.e.theme
 	if p.series == nil {
 		if p.err != nil {
 			return th.ToastErr.Render(clip(describeError(p.err, tr), w))
 		}
 		return th.Subtle.Render(tr.Loading)
 	}
-	s := p.series
-	var lines []string
-	lines = append(lines, th.Title.Render(clip(s.Title, w)))
-	meta := joinNonEmpty(" · ",
-		contentLabel(s.ContentType, lang), statusLabel(s.Status, lang),
-		fmt.Sprintf(tr.Episodes, firstNonZero(len(p.episodes), s.EpisodeCount)), s.RightText,
-	)
-	if s.PayType != 0 {
-		meta = joinNonEmpty(" · ", meta, payLabel(s.PayType, lang))
-	}
-	lines = append(lines, clip(th.Subtle.Render(meta), w))
-	counts := joinNonEmpty("  ",
-		labelled(tr.Heat, th.Heat.Render(formatCount(s.Heat, lang)), th),
-		labelled(tr.Plays, formatCount(s.PlayCount, lang), th),
-		labelled(tr.Follows, formatCount(s.FollowCount, lang), th),
-		labelled(tr.Likes, formatCount(s.DiggCount, lang), th),
-	)
-	if counts != "" {
-		lines = append(lines, clip(counts, w))
-	}
-	if hist, ok := p.e.watched(p.id); ok {
-		where := fmt.Sprintf(tr.EpisodeN, hist.Episode)
-		if hist.Finished {
-			where += " ✓"
-		} else if hist.Position > 0 {
-			where += " " + formatSeconds(hist.Position)
-		}
-		lines = append(lines, clip(labelled(tr.LastWatched, th.Accent.Render(where), th), w))
-	}
+	lines := seriesHero(p.e, w, h, p.series.SeriesSummary, p.series, p.actions())
+	lines = append(lines, "")
 	if len(p.seasons.names) > 0 {
 		lines = append(lines, p.seasons.view(w, th))
 	}
-	lines = append(lines, "")
+	lines = append(lines, heading("episodes", tr.EpisodeList).render(w, false, th))
 	used := len(lines) + 1
 	gridH := h - used
 	if gridH < 1 {
@@ -324,6 +300,16 @@ func (p *seriesPage) View(w, h int) string {
 	lines = append(lines, p.grid.view(p.episodes, p.e, p.id, w, gridH, p.focus == 0))
 	lines = append(lines, p.legend(w))
 	return strings.Join(lines, "\n")
+}
+
+// actions are the page's main keys drawn as buttons in the headline.
+func (p *seriesPage) actions() []string {
+	tr, th := p.e.tr, p.e.theme
+	if len(p.episodes) == 0 || p.grid.cursor >= len(p.episodes) {
+		return nil
+	}
+	play := th.PillHot.Render("▶ " + tr.KeyPlay + " " + fmt.Sprintf(tr.EpisodeN, p.episodes[p.grid.cursor].Number))
+	return []string{"", play, keyHints([]binding{{"a", tr.KeyAutoplay}, {"d", tr.KeyDownload}}, 80, th)}
 }
 
 func (p *seriesPage) legend(w int) string {
@@ -342,7 +328,11 @@ func (p *seriesPage) Detail(w, h int) string {
 		return ""
 	}
 	tr, th := p.e.tr, p.e.theme
-	top := renderSeriesDetail(p.e, w, h, p.series.SeriesSummary)
+	notes := seriesNotes(p.e, w, p.series.SeriesSummary, p.series)
+	if len(notes) > 0 {
+		notes = notes[1:]
+	}
+	top := strings.Join(notes, "\n")
 	if p.relList.len() == 0 {
 		return top
 	}
@@ -361,9 +351,9 @@ func (p *seriesPage) Detail(w, h int) string {
 	for len(topLines) < keep {
 		topLines = append(topLines, "")
 	}
-	head := th.Accent.Render(tr.Related)
+	head := heading("related", tr.Related).render(w, false, th)
 	if p.focus == 1 {
-		head = th.NavFocused.Render(" " + tr.Related + " ")
+		head = th.Gutter.Render("━━ ") + th.NavFocused.Render(tr.Related)
 	}
 	return strings.Join(topLines, "\n") + "\n" + head + "\n" + p.relList.view(w, relH-1, th, p.focus == 1)
 }

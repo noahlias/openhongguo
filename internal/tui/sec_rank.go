@@ -136,8 +136,10 @@ func rankRows(items []model.RankItem, e *env) []row {
 			continue
 		}
 		sum := model.SeriesSummary{ID: it.SeriesID, Title: it.Title, CoverURL: it.CoverURL, EpisodeCount: it.EpisodeCount}
-		extra := joinNonEmpty(" ", e.theme.Heat.Render(it.Score), e.theme.Accent.Render(changeMark(it.Change, e.lang())))
-		rows = append(rows, seriesRow{item: sum, prefix: padLeft(itoa(it.Position), 3), extra: extra, promoted: it.Promoted, tr: e.tr})
+		rows = append(rows, seriesRow{
+			item: sum, prefix: padLeft(itoa(it.Position), 3), note: it.Score, change: it.Change, lang: e.lang(),
+			promoted: it.Promoted, tr: e.tr,
+		})
 	}
 	return rows
 }

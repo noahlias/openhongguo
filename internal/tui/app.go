@@ -350,11 +350,11 @@ func (a *app) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if a.focus == focusNav && len(a.stack) == 0 {
 		switch k {
-		case "j", "down":
+		case "l", "right", "j":
 			return a.activate((a.nav + 1) % navCount)
-		case "k", "up":
+		case "h", "left", "k":
 			return a.activate((a.nav + navCount - 1) % navCount)
-		case "enter", "l", "right":
+		case "enter", "down":
 			a.focus = focusMain
 			return nil
 		}

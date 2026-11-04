@@ -44,6 +44,24 @@ type Theme struct {
 	Label     lipgloss.Style
 	Overlay   lipgloss.Style
 	Promoted  lipgloss.Style
+
+	Brand      lipgloss.Style
+	Panel      lipgloss.Style
+	PanelFocus lipgloss.Style
+	PanelTitle lipgloss.Style
+	Gutter     lipgloss.Style
+	RowTitle   lipgloss.Style
+	KeyCap     lipgloss.Style
+	Pill       lipgloss.Style
+	PillHot    lipgloss.Style
+	PillNew    lipgloss.Style
+	PillDone   lipgloss.Style
+	Up         lipgloss.Style
+	Down       lipgloss.Style
+	// Medals color the first three places of a ranking.
+	Medals  [3]lipgloss.Style
+	BarFill lipgloss.Style
+	BarRest lipgloss.Style
 }
 
 func newTheme(name string, dark bool) Theme {
@@ -96,6 +114,33 @@ func newTheme(name string, dark bool) Theme {
 	t.Label = t.Subtle
 	t.Overlay = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(red).Padding(0, 1)
 	t.Promoted = t.Subtle.Italic(true)
+	white := hex("#FFFFFF")
+	green := hex("#30A46C")
+	t.Brand = lipgloss.NewStyle().Bold(true).Foreground(white).Background(red).Padding(0, 1)
+	t.Panel = t.Border
+	t.PanelFocus = lipgloss.NewStyle().Foreground(red)
+	t.PanelTitle = base.Bold(true)
+	t.Gutter = lipgloss.NewStyle().Foreground(red)
+	t.RowTitle = base.Bold(true).Foreground(selFg)
+	t.KeyCap = lipgloss.NewStyle().Bold(true).Foreground(fg).Background(chip).Padding(0, 1)
+	t.Pill = lipgloss.NewStyle().Foreground(fg).Background(chip).Padding(0, 1)
+	t.PillHot = lipgloss.NewStyle().Bold(true).Foreground(white).Background(red).Padding(0, 1)
+	t.PillNew = lipgloss.NewStyle().Bold(true).Foreground(white).Background(orange).Padding(0, 1)
+	t.PillDone = lipgloss.NewStyle().Foreground(white).Background(green).Padding(0, 1)
+	t.Up = lipgloss.NewStyle().Foreground(green)
+	t.Down = lipgloss.NewStyle().Foreground(red)
+	t.Medals = [3]lipgloss.Style{
+		lipgloss.NewStyle().Bold(true).Foreground(hex("#F5B400")),
+		lipgloss.NewStyle().Bold(true).Foreground(hex("#A8B3BD")),
+		lipgloss.NewStyle().Bold(true).Foreground(hex("#C77B3B")),
+	}
+	t.BarFill = lipgloss.NewStyle().Foreground(red)
+	t.BarRest = t.Border
+	t.TabActive = lipgloss.NewStyle().Bold(true).Foreground(white).Background(red).Padding(0, 1)
+	t.TabInactive = t.Subtle.Padding(0, 1)
+	t.NavSelected = lipgloss.NewStyle().Bold(true).Foreground(red).Background(chip).Padding(0, 1)
+	t.NavFocused = lipgloss.NewStyle().Bold(true).Foreground(white).Background(red).Padding(0, 1)
+	t.NavItem = t.Subtle.Padding(0, 1)
 	return t
 }
 
@@ -129,6 +174,27 @@ func monoTheme(t Theme) Theme {
 	t.Label = plain.Faint(true)
 	t.Overlay = plain.Border(lipgloss.NormalBorder()).Padding(0, 1)
 	t.Promoted = plain.Faint(true)
+	t.Brand = plain.Bold(true).Reverse(true).Padding(0, 1)
+	t.Panel = plain.Faint(true)
+	t.PanelFocus = plain.Bold(true)
+	t.PanelTitle = plain.Bold(true)
+	t.Gutter = plain.Bold(true)
+	t.RowTitle = plain.Bold(true)
+	t.KeyCap = plain.Reverse(true).Padding(0, 1)
+	t.Pill = plain.Padding(0, 1)
+	t.PillHot = plain.Bold(true).Reverse(true).Padding(0, 1)
+	t.PillNew = plain.Bold(true).Padding(0, 1)
+	t.PillDone = plain.Reverse(true).Padding(0, 1)
+	t.Up = plain.Bold(true)
+	t.Down = plain
+	t.Medals = [3]lipgloss.Style{plain.Bold(true), plain.Bold(true), plain.Bold(true)}
+	t.BarFill = plain
+	t.BarRest = plain.Faint(true)
+	t.TabActive = plain.Bold(true).Reverse(true).Padding(0, 1)
+	t.TabInactive = plain.Faint(true).Padding(0, 1)
+	t.NavSelected = plain.Bold(true).Underline(true).Padding(0, 1)
+	t.NavFocused = plain.Bold(true).Reverse(true).Padding(0, 1)
+	t.NavItem = plain.Faint(true).Padding(0, 1)
 	return t
 }
 

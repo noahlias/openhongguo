@@ -6,7 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// row is one line of a list pane.
+// row is one entry of a list pane; it may span several lines.
 type row interface {
 	key() string
 	render(w int, selected bool, th *Theme) string
@@ -111,16 +111,27 @@ func (l *listPane) handleKey(k string, pageSize int) bool {
 	return true
 }
 
-// view draws h lines of w cells with the cursor visible.
+// view draws h lines of w cells with the cursor's row whole on screen.
+// Rows may span several lines; a bar in the two-cell gutter marks the
+// selected one.
 func (l *listPane) view(w, h int, th *Theme, focused bool) string {
-	if h <= 0 || w <= 0 {
+	if h <= 0 || w <= 2 {
 		return ""
 	}
+	if len(l.rows) == 0 {
+		return fit("", w, h)
+	}
+	l.clampCursor()
 	if l.cursor < l.offset {
 		l.offset = l.cursor
 	}
-	if l.cursor >= l.offset+h {
-		l.offset = l.cursor - h + 1
+	used := 0
+	for i := l.cursor; i >= l.offset; i-- {
+		used += strings.Count(l.rows[i].render(w-2, false, th), "\n") + 1
+		if used > h {
+			l.offset = i + 1
+			break
+		}
 	}
 	if l.offset < 0 {
 		l.offset = 0
@@ -128,16 +139,19 @@ func (l *listPane) view(w, h int, th *Theme, focused bool) string {
 	lines := make([]string, 0, h)
 	for i := l.offset; i < len(l.rows) && len(lines) < h; i++ {
 		sel := i == l.cursor
-		line := l.rows[i].render(w, sel, th)
+		gutter := "  "
 		switch {
 		case sel && focused:
-			line = th.RowSelected.Render(pad(line, w))
+			gutter = th.Gutter.Render("▌") + " "
 		case sel:
-			line = th.RowBlurred.Render(pad(line, w))
-		default:
-			line = pad(line, w)
+			gutter = th.Subtle.Render("▌") + " "
 		}
-		lines = append(lines, line)
+		for _, line := range strings.Split(l.rows[i].render(w-2, sel, th), "\n") {
+			if len(lines) == h {
+				break
+			}
+			lines = append(lines, gutter+pad(line, w-2))
+		}
 	}
 	for len(lines) < h {
 		lines = append(lines, strings.Repeat(" ", w))

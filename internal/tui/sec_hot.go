@@ -114,19 +114,17 @@ func (s *hotSection) skipHeadings(dir int) {
 
 func hotRows(hot *model.HotSearch, tr *Strings) []row {
 	var rows []row
-	heading := func(id, text string) {
-		rows = append(rows, textRow{id: "h:" + id, text: text, style: func(th *Theme) string { return th.Accent.Render("— " + text) }})
-	}
+	head := func(id, text string) { rows = append(rows, heading(id, text)) }
 	item := func(it model.HotItem, prefix string) {
 		sum := model.SeriesSummary{ID: it.SeriesID, Title: it.Title, CoverURL: it.CoverURL, CoverExpiresAt: it.CoverExpiresAt, EpisodeCount: it.EpisodeCount}
 		score := it.SearchScore
 		if score == "" {
 			score = it.Heat
 		}
-		rows = append(rows, seriesRow{item: sum, prefix: prefix, extra: joinNonEmpty(" ", it.Tag, score), tr: tr})
+		rows = append(rows, seriesRow{item: sum, prefix: prefix, tag: it.Tag, note: score, tr: tr})
 	}
 	if len(hot.Guesses) > 0 {
-		heading("guess", tr.Guesses)
+		head("guess", tr.Guesses)
 		for _, it := range hot.Guesses {
 			item(it, "  ·")
 		}
@@ -135,7 +133,7 @@ func hotRows(hot *model.HotSearch, tr *Strings) []row {
 		if len(b.Items) == 0 && len(b.Topics) == 0 {
 			continue
 		}
-		heading(itoa(bi), b.Name)
+		head(itoa(bi), b.Name)
 		for _, it := range b.Items {
 			item(it, padLeft(itoa(it.Position), 3))
 		}

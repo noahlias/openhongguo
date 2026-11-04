@@ -145,13 +145,12 @@ func (s *settingsSection) View(w, h int) string {
 	}
 	lines := make([]string, 0, h)
 	for i, it := range items {
-		line := pad(it.label, lw) + "  " + it.value
+		line := "  " + th.Label.Render(pad(it.label, lw)) + "   " + it.value
 		if i == s.cursor {
-			line = th.RowSelected.Render(pad("› "+line, w))
-		} else {
-			line = pad("  "+th.Label.Render(pad(it.label, lw))+"  "+it.value, w)
+			line = th.Gutter.Render("▌") + " " + th.RowTitle.Render(pad(it.label, lw)) + "  " +
+				th.Subtle.Render("‹ ") + th.Accent.Bold(true).Render(it.value) + th.Subtle.Render(" ›")
 		}
-		lines = append(lines, line)
+		lines = append(lines, pad(line, w), "")
 	}
 	for len(lines) < h {
 		lines = append(lines, strings.Repeat(" ", w))

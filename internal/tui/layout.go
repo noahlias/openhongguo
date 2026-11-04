@@ -1,44 +1,28 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 )
 
 const (
-	navWidth       = 14
 	minNavScreen   = 72
 	minDetailWidth = 100
+	maxDetailWidth = 64
 )
 
-// panes are the widths of the three columns for a screen width; a zero
-// width hides the pane.
+// panes are the widths of the main and detail cards for a screen width; a
+// zero width hides the detail card. One column separates them.
 type panes struct {
-	nav, main, detail int
+	main, detail int
 }
 
 func layoutPanes(w int) panes {
-	p := panes{}
-	if w >= minNavScreen {
-		p.nav = navWidth
-	}
+	p := panes{main: w}
 	if w >= minDetailWidth {
-		p.detail = w * 2 / 5
-		if p.detail > 60 {
-			p.detail = 60
-		}
-	}
-	p.main = w - p.nav - p.detail
-	if p.nav > 0 {
-		p.main--
-	}
-	if p.detail > 0 {
-		p.main--
-	}
-	if p.main < 10 {
-		p.main = 10
+		p.detail = min(w*2/5, maxDetailWidth)
+		p.main = w - p.detail - 1
 	}
 	return p
 }
@@ -58,28 +42,82 @@ func fit(s string, w, h int) string {
 	return strings.Join(lines, "\n")
 }
 
-// separator is a vertical line of h cells.
-func separator(h int, st lipgloss.Style) string {
-	line := st.Render("│")
-	parts := make([]string, h)
-	for i := range parts {
-		parts[i] = line
+// card frames body in a rounded border of w×h cells with title set into
+// the top edge. The body gets w-4 columns and h-2 lines.
+func card(title, body string, w, h int, border lipgloss.Style) string {
+	if w < 6 || h < 3 {
+		return fit(body, w, h)
 	}
-	return strings.Join(parts, "\n")
+	inner := w - 4
+	top := border.Render("╭" + strings.Repeat("─", w-2) + "╮")
+	if title != "" {
+		title = clip(title, w-6)
+		rest := w - 3 - width(title)
+		top = border.Render("╭─") + title + border.Render(strings.Repeat("─", max(rest, 0))+"╮")
+	}
+	side := border.Render("│")
+	lines := strings.Split(fit(body, inner, h-2), "\n")
+	out := make([]string, 0, h)
+	out = append(out, top)
+	for _, l := range lines {
+		out = append(out, side+" "+l+" "+side)
+	}
+	out = append(out, border.Render("╰"+strings.Repeat("─", w-2)+"╯"))
+	return strings.Join(out, "\n")
 }
 
-// topBar names the app and the current screen and hints the global keys.
-func topBar(w int, th *Theme, tr *Strings, title string) string {
-	left := th.Title.Render(" "+tr.AppTitle) + th.Subtle.Render(" │ ") + clip(title, max(w/2, 10))
-	right := th.Key.Render("/") + " " + tr.KeySearch + "  " + th.Key.Render("?") + " " + tr.KeyHelp + " "
-	return twoColumns(left, right, w)
+// strip lays parts out left to right in w cells, sliding so active stays
+// visible and marking what is cut off with ‹ and ›.
+func strip(parts []string, active, w int, gap string, th *Theme) string {
+	if len(parts) == 0 || w <= 0 {
+		return ""
+	}
+	widths := make([]int, len(parts))
+	for i, p := range parts {
+		widths[i] = width(p) + width(gap)
+	}
+	start := 0
+	for {
+		total := 2
+		for i := start; i <= active && i < len(parts); i++ {
+			total += widths[i]
+		}
+		if total <= w || start >= active {
+			break
+		}
+		start++
+	}
+	var b strings.Builder
+	used := 0
+	if start > 0 {
+		b.WriteString(th.Subtle.Render("‹ "))
+		used += 2
+	}
+	for i := start; i < len(parts); i++ {
+		if used+widths[i] > w-1 && i > active {
+			b.WriteString(th.Subtle.Render("›"))
+			break
+		}
+		b.WriteString(parts[i])
+		b.WriteString(gap)
+		used += widths[i]
+	}
+	return clip(b.String(), w)
 }
 
-// statusBar shows playback and the download queue.
-func statusBar(w int, th *Theme, tr *Strings, playing string, downloads int, hint string) string {
-	left := " " + playing
-	if downloads > 0 {
-		left += th.Subtle.Render(fmt.Sprintf("  ↓ %d", downloads))
+// keyHints draws bindings as keycaps, as many as fit in w cells.
+func keyHints(items []binding, w int, th *Theme) string {
+	var b strings.Builder
+	used := 0
+	for _, it := range items {
+		part := th.KeyCap.Render(it.keys) + " " + th.Subtle.Render(it.help)
+		n := width(part) + 2
+		if used+n > w {
+			break
+		}
+		b.WriteString(part)
+		b.WriteString("  ")
+		used += n
 	}
-	return th.StatusBar.Render(twoColumns(left, hint+" ", w))
+	return b.String()
 }

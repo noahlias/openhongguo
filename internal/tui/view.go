@@ -9,11 +9,48 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+// View hands kitty covers to the renderer inside the frame: the renderer
+// writes a sequence just before the cell it precedes, so a placement lands
+// on the cover's first cell. A frame showing no cover starts by clearing
+// the placements, so a cover never outlives the frame that drew it; an
+// overlay hides the cover, which would otherwise be drawn above it.
 func (a *app) View() tea.View {
-	v := tea.NewView(a.render())
+	c := a.env.covers
+	kitty := c != nil && c.kitty()
+	keep := func(seq string) bool { return kitty && a.overlay == nil && c.isPlacement(seq) }
+	frame, placed := dropStringSequences(a.render(), keep)
+	if kitty && !placed {
+		frame = kittyClear + frame
+	}
+	v := tea.NewView(frame)
 	v.AltScreen = true
 	v.WindowTitle = "ohg"
 	return v
+}
+
+// dropStringSequences removes OSC, DCS, APC, SOS and PM sequences from the
+// frame except those keep accepts, and reports whether it kept any. Others
+// came from service text, and the renderer would pass the latter four to
+// the terminal.
+func dropStringSequences(frame string, keep func(string) bool) (string, bool) {
+	kept := false
+	p := ansi.GetParser()
+	defer ansi.PutParser(p)
+	var b strings.Builder
+	var state byte
+	for len(frame) > 0 {
+		seq, _, n, next := ansi.DecodeSequence(frame, state, p)
+		switch {
+		case !ansi.HasOscPrefix(seq) && !ansi.HasDcsPrefix(seq) && !ansi.HasApcPrefix(seq) &&
+			!ansi.HasSosPrefix(seq) && !ansi.HasPmPrefix(seq):
+			b.WriteString(seq)
+		case keep(seq):
+			b.WriteString(seq)
+			kept = true
+		}
+		state, frame = next, frame[n:]
+	}
+	return b.String(), kept
 }
 
 func (a *app) render() string {
@@ -25,28 +62,24 @@ func (a *app) render() string {
 	screen := a.active()
 	bodyH := h - 2
 	p := layoutPanes(w)
-	var cols []string
-	if p.nav > 0 {
-		cols = append(cols, fit(a.renderNav(p.nav, bodyH), p.nav, bodyH), separator(bodyH, th.Border))
-	}
 	mainW := p.main
 	detail := ""
 	if p.detail > 0 {
-		detail = screen.Detail(p.detail, bodyH)
+		detail = screen.Detail(p.detail-4, bodyH-2)
 		if detail == "" {
-			mainW += p.detail + 1
+			mainW = w
 		}
 	}
-	cols = append(cols, fit(screen.View(mainW, bodyH), mainW, bodyH))
+	border := th.PanelFocus
+	if a.focus == focusNav && len(a.stack) == 0 {
+		border = th.Panel
+	}
+	cols := []string{card(a.panelTitle(screen), screen.View(mainW-4, bodyH-2), mainW, bodyH, border)}
 	if detail != "" {
-		cols = append(cols, separator(bodyH, th.Border), fit(detail, p.detail, bodyH))
+		cols = append(cols, fit("", 1, bodyH), card("", detail, p.detail, bodyH, th.Panel))
 	}
 	body := lipgloss.JoinHorizontal(lipgloss.Top, cols...)
-	title := screen.Title()
-	if len(a.stack) > 0 {
-		title = a.navTitle(a.nav)() + th.Subtle.Render(" › ") + title
-	}
-	out := topBar(w, th, tr, title) + "\n" + body + "\n" + a.renderStatus(w)
+	out := a.renderHeader(w) + "\n" + body + "\n" + a.renderFooter(w)
 	if a.overlay != nil {
 		box := a.overlay.View(w, h, th)
 		out = overlayOn(out, box, w, h)
@@ -57,46 +90,66 @@ func (a *app) render() string {
 	return out
 }
 
-func (a *app) renderNav(w, h int) string {
-	th, tr := a.env.theme, a.env.tr
-	var lines []string
-	for i := 0; i < navCount; i++ {
-		n := (i + 1) % 10
-		label := fmt.Sprintf("%d %s", n, a.navTitle(i)())
-		switch {
-		case i == a.nav && a.focus == focusNav && len(a.stack) == 0:
-			label = th.NavFocused.Render(pad(label, w))
-		case i == a.nav:
-			label = th.NavSelected.Render(pad(label, w))
-		default:
-			label = th.NavItem.Render(pad(label, w))
-		}
-		lines = append(lines, label)
+// panelTitle names the main card, with the section in front of a page.
+func (a *app) panelTitle(screen Screen) string {
+	th := a.env.theme
+	title := " " + th.PanelTitle.Render(screen.Title()) + " "
+	if len(a.stack) > 0 {
+		title = " " + th.Subtle.Render(a.navTitle(a.nav)()+" › ") + th.PanelTitle.Render(screen.Title()) + " "
 	}
-	if title, ep, total, running := a.player.status(); running {
-		for len(lines) < h-3 {
-			lines = append(lines, "")
-		}
-		lines = append(lines, th.Accent.Render(clip("▶ "+tr.Playing, w)))
-		lines = append(lines, clip(title, w))
-		lines = append(lines, th.Subtle.Render(clip(fmt.Sprintf("%d / %d", ep, total), w)))
-	}
-	return strings.Join(lines, "\n")
+	return title
 }
 
-func (a *app) renderStatus(w int) string {
+// renderHeader is the brand, the sections as pills and the global keys.
+func (a *app) renderHeader(w int) string {
 	th, tr := a.env.theme, a.env.tr
-	playing := th.Subtle.Render(tr.Idle)
+	brand := th.Brand.Render(tr.AppTitle) + " "
+	right := " " + keyHints([]binding{{"/", tr.KeySearch}, {"?", tr.KeyHelp}}, w, th)
+	navW := w - width(brand) - width(right)
+	if navW < 10 {
+		right = ""
+		navW = w - width(brand)
+	}
+	pills := make([]string, navCount)
+	for i := range pills {
+		label := itoa((i+1)%10) + " " + a.navTitle(i)()
+		switch {
+		case i == a.nav && a.focus == focusNav && len(a.stack) == 0:
+			pills[i] = th.NavFocused.Render(label)
+		case i == a.nav:
+			pills[i] = th.NavSelected.Render(label)
+		default:
+			pills[i] = th.NavItem.Render(label)
+		}
+	}
+	nav := strip(pills, a.nav, navW, "", th)
+	if w < minNavScreen {
+		nav = pills[a.nav]
+	}
+	return twoColumns(brand+nav, right, w)
+}
+
+// renderFooter is the active screen's keys, then playback and downloads.
+func (a *app) renderFooter(w int) string {
+	th, tr := a.env.theme, a.env.tr
+	right := th.Subtle.Render("● " + tr.Idle)
 	if title, ep, total, running := a.player.status(); running {
-		playing = th.Accent.Render("▶ ") + clip(title, w/3) + th.Subtle.Render(fmt.Sprintf(" %d/%d", ep, total)) + "  " + th.Key.Render("S") + " " + tr.KeyStop
+		right = th.Accent.Render("▶ ") + clip(title, w/4) + th.Subtle.Render(fmt.Sprintf(" %d/%d ", ep, total)) + th.KeyCap.Render("S") + " " + th.Subtle.Render(tr.KeyStop)
 	}
-	hint := ""
-	if len(a.stack) > 0 {
-		hint = th.Key.Render("esc") + " " + tr.KeyBack
-	} else if a.focus == focusNav {
-		hint = th.Key.Render("enter") + " " + tr.KeyOpen
+	if n := a.downloads.active(); n > 0 {
+		right = th.Heat.Render(fmt.Sprintf("↓ %d", n)) + "  " + right
 	}
-	return statusBar(w, th, tr, playing, a.downloads.active(), hint)
+	var keys []binding
+	switch {
+	case len(a.stack) > 0:
+		keys = append([]binding{{"esc", tr.KeyBack}}, a.active().Keys()...)
+	case a.focus == focusNav:
+		keys = []binding{{"← →", tr.KeySection}, {"enter", tr.KeyOpen}}
+	default:
+		keys = a.active().Keys()
+	}
+	left := " " + keyHints(keys, w-width(right)-3, th)
+	return twoColumns(left, right+" ", w)
 }
 
 // overlayOn draws box centered over base.

@@ -134,7 +134,7 @@ func wrap(s string, w int) []string {
 func joinNonEmpty(sep string, parts ...string) string {
 	var out []string
 	for _, p := range parts {
-		if strings.TrimSpace(p) != "" {
+		if strings.TrimSpace(ansi.Strip(p)) != "" {
 			out = append(out, p)
 		}
 	}

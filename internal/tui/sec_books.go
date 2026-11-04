@@ -43,16 +43,20 @@ type bookRow struct {
 
 func (r bookRow) key() string { return "book:" + r.item.ID }
 
-func (r bookRow) render(w int, _ bool, th *Theme) string {
-	left := r.item.Title
+func (r bookRow) render(w int, sel bool, th *Theme) string {
+	left := rowTitle(r.item.Title, sel, th)
+	indent := ""
 	if r.pos > 0 {
-		left = th.Subtle.Render(padLeft(itoa(r.pos), 3)) + " " + left
+		pos := padLeft(itoa(r.pos), 3)
+		left = rankMark(pos, th) + " " + left
+		indent = "    "
 	}
-	right := joinNonEmpty(" · ", th.Subtle.Render(r.item.Author), th.Heat.Render(r.note))
-	if r.note == "" && r.item.Words > 0 {
-		right = joinNonEmpty(" · ", th.Subtle.Render(r.item.Author), th.Subtle.Render(formatCount(r.item.Words, r.lang)))
+	words := ""
+	if r.item.Words > 0 {
+		words = formatCount(r.item.Words, r.lang)
 	}
-	return twoColumns(left, right, w)
+	meta := th.Subtle.Render(joinNonEmpty(" · ", r.item.Author, r.item.Category, words))
+	return twoColumns(left, th.Heat.Render(r.note), w) + secondLine(indent, meta, r.item.Description, w, th)
 }
 
 func newBooksSection(e *env) *booksSection { return &booksSection{e: e} }

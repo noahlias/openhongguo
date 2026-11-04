@@ -12,6 +12,7 @@ type Strings struct {
 	Episodes, EpisodeN, Playing, Idle, LastWatched, Finished    string
 	Heat, Plays, Follows, Likes, Status, Pay, Kind, Platform    string
 	Released, Badge, Novel, Seasons, Related, Description       string
+	EpisodeList                                                 string
 	Author, Words, Category, Followers, Works, Online, Upcoming string
 	Guesses, Topics, Promoted, Date, Tab, Results, Cursor       string
 
@@ -51,7 +52,7 @@ var zhStrings = Strings{
 	EmptyHistory: "没有观看记录", EmptyDownloads: "下载队列为空。在剧集页按 d 下载。",
 	Episodes: "%d 集", EpisodeN: "第 %d 集", Playing: "正在播放", Idle: "空闲", LastWatched: "上次看到", Finished: "已看完",
 	Heat: "热度", Plays: "播放", Follows: "追剧", Likes: "点赞", Status: "状态", Pay: "付费", Kind: "类型", Platform: "来源",
-	Released: "上线", Badge: "角标", Novel: "原著小说", Seasons: "季", Related: "相关推荐", Description: "简介",
+	Released: "上线", Badge: "角标", Novel: "原著小说", Seasons: "季", Related: "相关推荐", Description: "简介", EpisodeList: "选集",
 	Author: "作者", Words: "字数", Category: "分类", Followers: "粉丝", Works: "作品", Online: "已上线", Upcoming: "即将上线",
 	Guesses: "猜你想搜", Topics: "热点话题", Promoted: "推广", Date: "日期", Tab: "栏目", Results: "结果", Cursor: "下一页",
 
@@ -92,7 +93,7 @@ var enStrings = Strings{
 	EmptyHistory: "No watch history", EmptyDownloads: "The download queue is empty. Press d on a series page.",
 	Episodes: "%d eps", EpisodeN: "Ep %d", Playing: "Playing", Idle: "Idle", LastWatched: "Last watched", Finished: "Finished",
 	Heat: "Heat", Plays: "Plays", Follows: "Follows", Likes: "Likes", Status: "Status", Pay: "Pay", Kind: "Type", Platform: "Source",
-	Released: "Released", Badge: "Badge", Novel: "Novel", Seasons: "Seasons", Related: "Related", Description: "Synopsis",
+	Released: "Released", Badge: "Badge", Novel: "Novel", Seasons: "Seasons", Related: "Related", Description: "Synopsis", EpisodeList: "Episodes",
 	Author: "Author", Words: "Words", Category: "Category", Followers: "Followers", Works: "Works", Online: "Online", Upcoming: "Upcoming",
 	Guesses: "You might search", Topics: "Topics", Promoted: "promoted", Date: "Date", Tab: "Tab", Results: "Results", Cursor: "Next page",
 

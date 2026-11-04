@@ -160,3 +160,15 @@ func TestDownloadsSectionShowsQueue(t *testing.T) {
 		t.Fatalf("queue not drawn:\n%s", frame)
 	}
 }
+
+func TestSeriesRowSecondLineHasNoGapsForMissingFields(t *testing.T) {
+	th := newTheme("dark", true)
+	bare := seriesRow{item: model.SeriesSummary{Title: "t", Description: "blurb"}, tr: &zhStrings}
+	if got := strings.Split(ansi.Strip(bare.render(40, false, &th)), "\n")[1]; !strings.HasPrefix(got, "blurb") {
+		t.Fatalf("second line = %q", got)
+	}
+	counted := seriesRow{item: model.SeriesSummary{Title: "t", EpisodeCount: 3, Description: "blurb"}, note: "9万", tr: &zhStrings}
+	if got := strings.Split(ansi.Strip(counted.render(40, false, &th)), "\n")[1]; !strings.HasPrefix(got, "3 集  blurb") {
+		t.Fatalf("second line = %q", got)
+	}
+}
