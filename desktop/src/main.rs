@@ -1,3 +1,6 @@
+// A release build on Windows opens no console window beside the app.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,6 +30,8 @@ fn main() -> Result<()> {
                 ohg_desktop::ui::debug::ToggleDebug,
                 None,
             )]);
+            // macOS keeps an app running with no windows; this one has only one.
+            cx.on_window_closed(|cx, _| cx.quit()).detach();
             let size = size(px(settings.window.width), px(settings.window.height));
             let covers = cx.new(|_| covers);
             cx.set_global(Ohg {

@@ -4584,6 +4584,7 @@ name = "ohg-desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cc",
  "dirs 6.0.0",
  "env_logger",
  "futures",

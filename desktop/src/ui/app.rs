@@ -318,7 +318,7 @@ impl Render for AppView {
             )
             .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
                 let k = &e.keystroke;
-                if k.modifiers.control && k.key == "k" && this.theater.is_none() {
+                if k.modifiers.secondary(cx) && k.key == "k" && this.theater.is_none() {
                     this.go(Section::Search, window, cx);
                 } else if k.key == "escape" && this.theater.is_none() && !this.stack.is_empty() {
                     this.stack.pop();

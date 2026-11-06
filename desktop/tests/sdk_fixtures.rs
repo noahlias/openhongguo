@@ -24,7 +24,11 @@ fn fixture_server() -> (Server, String) {
         .unwrap()
         .to_path_buf();
     // `go run` would leave the built server running after a kill, so build it first.
-    let bin = std::env::temp_dir().join(format!("ohg-fixtureserver-{}", std::process::id()));
+    let bin = std::env::temp_dir().join(format!(
+        "ohg-fixtureserver-{}{}",
+        std::process::id(),
+        std::env::consts::EXE_SUFFIX
+    ));
     let built = Command::new("go")
         .current_dir(&root)
         .args(["build", "-o"])

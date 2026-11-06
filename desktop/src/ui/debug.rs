@@ -366,6 +366,7 @@ fn call_row(r: &CallRecord, mono: SharedString, p: Palette) -> Div {
 }
 
 /// User plus system CPU time this process has used.
+#[cfg(unix)]
 fn cpu_seconds() -> f64 {
     let mut usage = std::mem::MaybeUninit::<libc::rusage>::uninit();
     // SAFETY: getrusage fills the struct for RUSAGE_SELF; it fails only on a bad `who`.
@@ -375,6 +376,43 @@ fn cpu_seconds() -> f64 {
     };
     let tv = |t: libc::timeval| t.tv_sec as f64 + t.tv_usec as f64 / 1e6;
     tv(usage.ru_utime) + tv(usage.ru_stime)
+}
+
+#[cfg(windows)]
+fn cpu_seconds() -> f64 {
+    use std::ffi::c_void;
+    #[repr(C)]
+    #[derive(Default)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+    unsafe extern "system" {
+        fn GetCurrentProcess() -> *mut c_void;
+        fn GetProcessTimes(
+            process: *mut c_void,
+            creation: *mut FileTime,
+            exit: *mut FileTime,
+            kernel: *mut FileTime,
+            user: *mut FileTime,
+        ) -> i32;
+    }
+    let [mut created, mut exited, mut kernel, mut user] = Default::default();
+    // SAFETY: the pseudo-handle of the current process is always valid, and
+    // GetProcessTimes only writes the four structs.
+    let ok = unsafe {
+        GetProcessTimes(
+            GetCurrentProcess(),
+            &mut created,
+            &mut exited,
+            &mut kernel,
+            &mut user,
+        )
+    };
+    assert_ne!(ok, 0, "GetProcessTimes failed");
+    // FILETIME counts 100 ns ticks.
+    let secs = |t: FileTime| (((t.high as u64) << 32) | t.low as u64) as f64 / 1e7;
+    secs(kernel) + secs(user)
 }
 
 fn ms(d: Duration) -> String {
