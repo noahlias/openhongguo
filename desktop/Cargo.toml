@@ -1,0 +1,36 @@
+[package]
+name = "ohg-desktop"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "openhongguo desktop client on GPUI with an in-window libmpv player"
+publish = false
+
+[[bin]]
+name = "ohg-desktop"
+path = "src/main.rs"
+
+[dependencies]
+gpui-kit = "0.9"
+rsmpv = { version = "0.2.1", features = ["render"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
+futures = "0.3"
+sha1_smol = "1"
+dirs = "6"
+smallvec = "1"
+log = "0.4"
+libc = "0.2"
+env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+
+[features]
+# GPUI's element inspector (Ctrl+Shift+I) in release builds; debug builds have it anyway.
+# Cargo resolves gpui-kit's optional gpui-fast for it, which needs taffy =0.15.0 (Cargo.lock pins it).
+inspector = ["gpui-kit/inspector"]
+
+[profile.dev.package."*"]
+opt-level = 2

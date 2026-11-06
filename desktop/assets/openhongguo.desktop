@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=红果短剧
+GenericName=Short drama player
+Comment=Browse and watch Hongguo short dramas
+Exec=ohg-desktop
+Icon=openhongguo
+Terminal=false
+Categories=AudioVideo;Video;Player;
+StartupWMClass=openhongguo

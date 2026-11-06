@@ -367,6 +367,37 @@ ohg play 全球死考第一季
 
 播放需要 `mpv`、`ffplay` 或 `vlc`，下载需要 `ffmpeg`。完整用法见 [docs/cli.md](docs/cli.md)。
 
+## 桌面客户端（Linux）
+
+`desktop/` 是用 [GPUI](https://www.gpui.rs) 写的 Linux 桌面客户端 `ohg-desktop`，在窗口内用 libmpv 播放。它通过 C 接口（`bindings/cshared`）静态链接 Go SDK，和 `ohg` 共用配置目录里的匿名设备与观看记录。
+
+目前有继续观看、推荐、搜索、短剧详情、观看记录和设置。播放支持续播、自动下一集、清晰度切换、全屏和选集。
+
+布局随窗口宽度变化。宽窗口有带文字的侧栏；中等宽度时侧栏只显示图标；窄到手机宽度（比如平铺窗口管理器里的一栏）时改用底部标签栏，卡片也变小。播放时，窗口放不下侧边的选集栏，选集栏就浮在画面上。
+
+构建需要 Go、Rust 和 libmpv（Arch 上是 `mpv` 包）。中文界面建议装 `noto-fonts-cjk`。
+
+```sh
+make desktop           # 构建 desktop/target/release/ohg-desktop
+make install-desktop   # 装到 ~/.local，并添加启动器条目和图标
+```
+
+| 按键 | 作用 |
+|---|---|
+| `Ctrl+K` | 搜索 |
+| 空格 | 播放或暂停 |
+| `←` `→` | 后退或快进 5 秒 |
+| `↑` `↓` | 音量 |
+| `m` | 静音 |
+| `f`，双击画面 | 全屏 |
+| `n` `p` | 下一集或上一集 |
+| `Esc` | 关闭菜单，退出全屏，返回 |
+| `F12` | 调试面板 |
+
+客户端的设置保存在 `~/.config/openhongguo/desktop.json`。
+
+调试面板（`F12`，或在设置里打开）显示经过 Go 桥接的每次调用及其耗时和结果，libmpv 的解码器、帧率、丢帧和缓存，以及进程的 CPU 占用。要用 GPUI 的元素检查器，用 `cargo build --release --features inspector` 构建，然后按 `Ctrl+Shift+I`。
+
 ## 版本
 
 SDK 还没有发布 1.0 版本。在 1.0 之前，次版本号可能包含不兼容的变更。
@@ -383,6 +414,7 @@ SDK 还没有发布 1.0 版本。在 1.0 之前，次版本号可能包含不兼
 | `make test-mobile` | 运行 Android 和 iOS 的测试 |
 | `make gen` | 修改 SDK 的类型或注释后，重新生成各语言的类型和文档 |
 | `make build` | 构建 CLI、Node.js 包和所有移动端包 |
+| `make test-desktop` | 运行桌面客户端的 rustfmt、clippy 和测试 |
 
 > **注意**：README 中的方法表和错误表由 `make gen` 生成。不要手工修改，修改 `sdk` 的 Go 注释。
 
