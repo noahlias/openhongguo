@@ -24,7 +24,7 @@ import (
 
 // regions 列出每个 README 里要生成的区块。
 var regions = map[string][]string{
-	"README.md":                  {"methods-go", "errors-go"},
+	"docs/sdk.md":                {"methods-go", "errors-go"},
 	"bindings/node/README.md":    {"methods", "errors"},
 	"bindings/mobile/README.md":  {"methods", "errors"},
 	"bindings/flutter/README.md": {"methods", "errors"},
