@@ -8,6 +8,8 @@
 	<string>红果短剧</string>
 	<key>CFBundleIdentifier</key>
 	<string>dev.openhongguo.desktop</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
 	<string>ohg-desktop</string>
 	<key>CFBundlePackageType</key>

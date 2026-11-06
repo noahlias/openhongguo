@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Packs target/release/ohg-desktop into openhongguo.app with libmpv, ffmpeg
 # (for HEIC covers) and every Homebrew library they load, then into a .dmg.
-# Needs Homebrew's mpv, ffmpeg and dylibbundler.
+# Needs Homebrew's mpv, ffmpeg, dylibbundler and librsvg, and dmgbuild
+# (`pipx install dmgbuild`).
 #
 #   desktop/scripts/bundle-macos.sh <out-dir> <dmg-name>
 set -euo pipefail
@@ -13,14 +14,29 @@ stage="$out/stage"
 app="$stage/openhongguo.app"
 bin="$app/Contents/MacOS"
 libs="$app/Contents/Frameworks"
+res="$app/Contents/Resources"
+art="$here/assets/macos"
 brew_prefix=$(brew --prefix)
 
 rm -rf "$stage"
-mkdir -p "$bin" "$libs"
+mkdir -p "$bin" "$libs" "$res"
 cp "$here/target/release/ohg-desktop" "$bin/"
 cp "$brew_prefix/bin/ffmpeg" "$bin/"
 cp "$here/assets/Info.plist" "$app/Contents/"
+cp "$here/../LICENSE" "$res/"
 chmod u+w "$bin/"*
+
+iconset="$out/AppIcon.iconset"
+rm -rf "$iconset"
+mkdir -p "$iconset"
+for s in 16 32 128 256 512; do
+  rsvg-convert -w "$s" -h "$s" "$art/icon.svg" -o "$iconset/icon_${s}x${s}.png"
+  rsvg-convert -w $((s * 2)) -h $((s * 2)) "$art/icon.svg" -o "$iconset/icon_${s}x${s}@2x.png"
+done
+iconutil -c icns "$iconset" -o "$res/AppIcon.icns"
+# dmgbuild picks up background@2x.png beside background.png for Retina.
+rsvg-convert -w 600 -h 380 "$art/dmg-background.svg" -o "$out/background.png"
+rsvg-convert -w 1200 -h 760 "$art/dmg-background.svg" -o "$out/background@2x.png"
 
 dylibbundler -od -b -cd -ns \
   -x "$bin/ohg-desktop" -x "$bin/ffmpeg" \
@@ -73,6 +89,5 @@ codesign --force --sign - "$libs"/*.dylib
 codesign --force --sign - "$bin/ffmpeg"
 codesign --force --sign - "$app"
 
-ln -s /Applications "$stage/Applications"
-cp "$here/../LICENSE" "$stage/"
-hdiutil create -volname openhongguo -srcfolder "$stage" -ov -format UDZO "$out/$dmg"
+dmgbuild -s "$art/dmg.py" -D app="$app" -D icon="$res/AppIcon.icns" \
+  -D background="$out/background.png" openhongguo "$out/$dmg"

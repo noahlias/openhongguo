@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380">
+  <!-- Light, because Finder draws the icon labels in black. Icons sit at x 160 and 440, y 180. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBF8F7"/>
+      <stop offset="1" stop-color="#F1ECEA"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="380" fill="url(#bg)"/>
+  <path d="M262 180h66" stroke="#E5484D" stroke-opacity="0.55" stroke-width="5" stroke-linecap="round"/>
+  <path d="M318 166l16 14-16 14" fill="none" stroke="#E5484D" stroke-opacity="0.55" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

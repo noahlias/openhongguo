@@ -57,7 +57,9 @@ jobs:
             libvulkan-dev libfontconfig-dev libfreetype-dev
       - name: Install libmpv (macOS)
         if: runner.os == 'macOS'
-        run: brew install mpv ffmpeg dylibbundler
+        run: |
+          brew install mpv ffmpeg dylibbundler librsvg
+          pipx install dmgbuild==1.6.7
       - name: MSVC tools (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0

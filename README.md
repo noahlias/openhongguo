@@ -59,7 +59,7 @@
 | 平台 | 准备 |
 |---|---|
 | Linux | 装 `mpv ffmpeg`（Arch）或 `libmpv-dev ffmpeg`（Debian/Ubuntu）。中文字体建议装 Noto CJK |
-| macOS | `brew install mpv ffmpeg pkgconf`（没有 pkgconf 时链接器找不到 libmpv）；打包成 dmg 用 [bundle-macos.sh](desktop/scripts/bundle-macos.sh)（还需要 `dylibbundler`） |
+| macOS | `brew install mpv ffmpeg pkgconf`（没有 pkgconf 时链接器找不到 libmpv）；打包成 dmg 用 [bundle-macos.sh](desktop/scripts/bundle-macos.sh)（还需要 `brew install dylibbundler librsvg` 和 `pipx install dmgbuild`） |
 | Windows | 用 MSVC 版 Rust；cgo 需要 MinGW 的 `gcc`；从 [mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake/releases) 下载 `mpv-dev-x86_64-*`，生成 `mpv.lib`，并设置 `MPV_LIBRARY_DIR` |
 
 ```sh
