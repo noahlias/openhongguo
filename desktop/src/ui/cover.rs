@@ -49,7 +49,7 @@ impl Covers {
         Ok(Covers {
             http,
             dir,
-            ffmpeg: which("ffmpeg"),
+            ffmpeg: find_ffmpeg(),
             slots: HashMap::new(),
             lru: VecDeque::new(),
             queue: VecDeque::new(),
@@ -182,7 +182,15 @@ impl Job {
             rand_suffix(&self.url)
         ));
         std::fs::write(&tmp, data)?;
-        let out = Command::new(ffmpeg)
+        let mut cmd = Command::new(ffmpeg);
+        #[cfg(windows)]
+        {
+            // The app has no console; without this each cover flashes one.
+            use std::os::windows::process::CommandExt as _;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+        let out = cmd
             .args([
                 "-hide_banner",
                 "-loglevel",
@@ -243,11 +251,20 @@ fn rand_suffix(url: &str) -> String {
     sha1_smol::Sha1::from(url).digest().to_string()[..12].to_string()
 }
 
-fn which(bin: &str) -> Option<PathBuf> {
-    std::env::var_os("PATH")?
-        .to_str()?
-        .split(':')
-        .map(|d| Path::new(d).join(bin))
+/// The ffmpeg the macOS and Windows packages ship next to the executable,
+/// else one on PATH. An app opened from Finder does not see Homebrew's PATH.
+fn find_ffmpeg() -> Option<PathBuf> {
+    let name = format!("ffmpeg{}", std::env::consts::EXE_SUFFIX);
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf));
+    let path = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
+        .unwrap_or_default();
+    beside
+        .into_iter()
+        .chain(path)
+        .map(|dir| dir.join(&name))
         .find(|p| p.is_file())
 }
 

@@ -27,7 +27,9 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, name: linux-x86_64 }
-          - { os: macos-15, name: macos-arm64 }
+          # Homebrew's libraries require the macOS they were built on, so the
+          # oldest runner sets the oldest macOS the app opens on.
+          - { os: macos-14, name: macos-arm64 }
           - { os: windows-2025, name: windows-x86_64 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -55,7 +57,7 @@ jobs:
             libvulkan-dev libfontconfig-dev libfreetype-dev
       - name: Install libmpv (macOS)
         if: runner.os == 'macOS'
-        run: brew install mpv dylibbundler
+        run: brew install mpv ffmpeg dylibbundler
       - name: MSVC tools (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
@@ -64,18 +66,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         # shinchiro's builds ship libmpv-2.dll with a MinGW import library;
-        # MSVC needs mpv.lib, made here from the DLL's export table.
+        # MSVC needs mpv.lib, made here from the DLL's export table. The same
+        # release's ffmpeg.exe ships with the app to decode HEIC covers.
         run: |
           set -eu
           # Git Bash's coreutils `link` would shadow MSVC's link.exe for rustc.
           rm -f /usr/bin/link.exe
           dir="$RUNNER_TEMP/mpv"
           mkdir -p "$dir"
-          asset=$(gh release view --repo shinchiro/mpv-winbuild-cmake --json assets \
-            --jq '[.assets[].name | select(test("^mpv-dev-x86_64-[0-9]"))][0]')
-          gh release download --repo shinchiro/mpv-winbuild-cmake --pattern "$asset" --dir "$dir"
-          7z x -y -o"$dir" "$dir/$asset" > /dev/null
+          tag=$(gh release view --repo shinchiro/mpv-winbuild-cmake --json tagName --jq .tagName)
+          for want in '^mpv-dev-x86_64-[0-9]' '^ffmpeg-x86_64-git-'; do
+            asset=$(gh release view "$tag" --repo shinchiro/mpv-winbuild-cmake --json assets \
+              --jq "[.assets[].name | select(test(\"$want\"))][0]")
+            gh release download "$tag" --repo shinchiro/mpv-winbuild-cmake --pattern "$asset" --dir "$dir"
+            7z x -y -o"$dir" "$dir/$asset" > /dev/null
+          done
           cd "$dir"
+          cp "$(find . -name ffmpeg.exe | head -1)" ffmpeg.exe
           { echo "LIBRARY libmpv-2.dll"; echo "EXPORTS"
             dumpbin //NOLOGO //EXPORTS libmpv-2.dll | awk '$1 ~ /^[0-9]+$/ && $4 ~ /^mpv_/ {print $4}'
           } > mpv.def
@@ -101,28 +108,27 @@ jobs:
           tar -C dist -czf "dist/$PKG.tar.gz" "$PKG"
       - name: Package (macOS)
         if: runner.os == 'macOS'
+        run: desktop/scripts/bundle-macos.sh dist "$PKG.dmg"
+      - name: Smoke test (macOS)
+        if: runner.os == 'macOS'
+        # dyld resolves every library before main runs, so a bundle that
+        # cannot load fails within the first seconds.
         run: |
-          set -eu
-          app="dist/$PKG/openhongguo.app"
-          mkdir -p "$app/Contents/MacOS" "$app/Contents/Frameworks"
-          cp desktop/target/release/ohg-desktop "$app/Contents/MacOS/"
-          cp desktop/assets/Info.plist "$app/Contents/"
-          # Copies libmpv and every Homebrew library it needs into the bundle.
-          dylibbundler -od -b -x "$app/Contents/MacOS/ohg-desktop" \
-            -d "$app/Contents/Frameworks" -p @executable_path/../Frameworks/ \
-            -s "$(brew --prefix)/lib"
-          # Rewriting install names breaks signatures; arm64 refuses unsigned code.
-          codesign --force --sign - "$app/Contents/Frameworks/"*.dylib
-          codesign --force --sign - "$app"
-          cp LICENSE "dist/$PKG/"
-          (cd dist && ditto -c -k --keepParent "$PKG" "$PKG.zip")
+          set -u
+          exe=dist/stage/openhongguo.app/Contents/MacOS/ohg-desktop
+          OHG_CONFIG_DIR="$RUNNER_TEMP/cfg" "$exe" > "$RUNNER_TEMP/run.log" 2>&1 &
+          pid=$!
+          sleep 10
+          kill "$pid" 2> /dev/null
+          cat "$RUNNER_TEMP/run.log"
+          ! grep -E "dyld|Library not loaded" "$RUNNER_TEMP/run.log"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
           set -eu
           mkdir -p "dist/$PKG"
           cp desktop/target/release/ohg-desktop.exe desktop/target/release/ohg.dll \
-            "$RUNNER_TEMP/mpv/libmpv-2.dll" LICENSE "dist/$PKG/"
+            "$RUNNER_TEMP/mpv/libmpv-2.dll" "$RUNNER_TEMP/mpv/ffmpeg.exe" LICENSE "dist/$PKG/"
           (cd dist && 7z a -tzip "$PKG.zip" "$PKG" > /dev/null)
 
       - uses: actions/upload-artifact@v7
