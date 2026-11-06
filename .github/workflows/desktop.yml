@@ -112,16 +112,26 @@ jobs:
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
         # dyld resolves every library before main runs, so a bundle that
-        # cannot load fails within the first seconds.
+        # cannot load dies at once. The unbundled build runs too, to tell a
+        # packaging fault from one the runner itself causes.
         run: |
-          set -u
-          exe=dist/stage/openhongguo.app/Contents/MacOS/ohg-desktop
-          OHG_CONFIG_DIR="$RUNNER_TEMP/cfg" "$exe" > "$RUNNER_TEMP/run.log" 2>&1 &
-          pid=$!
-          sleep 10
-          kill "$pid" 2> /dev/null
-          cat "$RUNNER_TEMP/run.log"
-          ! grep -E "dyld|Library not loaded" "$RUNNER_TEMP/run.log"
+          set -u +e
+          launch() {
+            RUST_LOG=info RUST_BACKTRACE=1 OHG_CONFIG_DIR="$RUNNER_TEMP/cfg" "$1" > "$2" 2>&1 &
+            local pid=$!
+            sleep 10
+            if kill -0 "$pid" 2> /dev/null; then
+              kill "$pid"; echo "== $1: running after 10 s"
+            else
+              wait "$pid"; echo "== $1: exited with $?"
+            fi
+            cat "$2"
+          }
+          launch desktop/target/release/ohg-desktop "$RUNNER_TEMP/plain.log"
+          launch dist/stage/openhongguo.app/Contents/MacOS/ohg-desktop "$RUNNER_TEMP/bundle.log"
+          report=$(ls -t ~/Library/Logs/DiagnosticReports/ohg-desktop* 2> /dev/null | head -1)
+          [ -n "$report" ] && head -c 6000 "$report"
+          ! grep -E "dyld|Library not loaded" "$RUNNER_TEMP/bundle.log"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
