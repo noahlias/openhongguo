@@ -47,9 +47,10 @@ fn main() -> Result<()> {
                 app_id: Some("openhongguo".into()),
                 titlebar: Some(TitlebarOptions {
                     title: Some("红果短剧".into()),
-                    ..Default::default()
+                    ..titlebar()
                 }),
                 window_min_size: Some(gpui_kit::size(px(860.), px(560.))),
+                app_owns_titlebar_drag: cfg!(target_os = "macos"),
                 ..Default::default()
             };
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
@@ -63,4 +64,14 @@ fn main() -> Result<()> {
             }
         });
     Ok(())
+}
+
+/// On macOS the app draws its own title bar (`AppView`) under the traffic
+/// lights, so the window is not topped by a system bar in the system's colours.
+fn titlebar() -> TitlebarOptions {
+    if cfg!(target_os = "macos") {
+        component::TitleBar::title_bar_options()
+    } else {
+        TitlebarOptions::default()
+    }
 }

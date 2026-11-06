@@ -311,6 +311,7 @@ impl Render for AppView {
             .size_full()
             .relative()
             .flex()
+            .flex_col()
             .bg(p.bg)
             .text_color(p.fg)
             .on_action(
@@ -325,48 +326,61 @@ impl Render for AppView {
                     cx.notify();
                 }
             }))
+            .when(cfg!(target_os = "macos") && !window.is_fullscreen(), |d| {
+                d.child(
+                    component::TitleBar::new()
+                        .bg(p.sidebar)
+                        .border_color(p.line),
+                )
+            })
             .child(
                 div()
                     .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .relative()
+                    .min_h_0()
                     .flex()
-                    .when(layout != Layout::Compact, |d| {
-                        d.child(self.sidebar(t, p, layout, cx))
-                    })
                     .child(
                         div()
                             .flex_1()
                             .min_w_0()
                             .h_full()
+                            .relative()
                             .flex()
-                            .flex_col()
-                            .child(div().flex_1().min_h_0().w_full().child(self.page()))
-                            .when(layout == Layout::Compact, |d| {
-                                d.child(self.tab_bar(t, p, cx))
+                            .when(layout != Layout::Compact, |d| {
+                                d.child(self.sidebar(t, p, layout, cx))
+                            })
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .h_full()
+                                    .flex()
+                                    .flex_col()
+                                    .child(div().flex_1().min_h_0().w_full().child(self.page()))
+                                    .when(layout == Layout::Compact, |d| {
+                                        d.child(self.tab_bar(t, p, cx))
+                                    }),
+                            )
+                            .when_some(self.theater.clone(), |d, th| {
+                                let id = ("theater", th.entity_id());
+                                d.child(div().absolute().inset_0().child(motion::enter(
+                                    div().size_full().child(th),
+                                    id,
+                                    240,
+                                    Duration::ZERO,
+                                    0.,
+                                )))
                             }),
                     )
-                    .when_some(self.theater.clone(), |d, th| {
-                        let id = ("theater", th.entity_id());
-                        d.child(div().absolute().inset_0().child(motion::enter(
-                            div().size_full().child(th),
-                            id,
-                            240,
+                    .when_some(self.debug.clone(), |d, panel| {
+                        d.child(motion::enter(
+                            div().flex_none().h_full().w(px(PANEL_W)).child(panel),
+                            "debug-in",
+                            200,
                             Duration::ZERO,
                             0.,
-                        )))
+                        ))
                     }),
             )
-            .when_some(self.debug.clone(), |d, panel| {
-                d.child(motion::enter(
-                    div().flex_none().h_full().w(px(PANEL_W)).child(panel),
-                    "debug-in",
-                    200,
-                    Duration::ZERO,
-                    0.,
-                ))
-            })
             .child(toasts)
     }
 }

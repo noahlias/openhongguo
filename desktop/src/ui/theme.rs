@@ -133,10 +133,19 @@ pub fn apply(theme: &str, window: &Window, cx: &mut App) {
     t.selection = p.accent_soft;
 }
 
-/// Noto Sans CJK SC, then LXGW WenKai; otherwise the toolkit's system font.
+/// The platform's own Chinese UI face, then Noto Sans CJK SC, then LXGW WenKai;
+/// otherwise the toolkit's system font.
 fn ui_font(cx: &App) -> Option<&'static str> {
     let names = cx.text_system().all_font_names();
-    ["Noto Sans CJK SC", "LXGW WenKai"]
+    let native = if cfg!(target_os = "macos") {
+        Some("PingFang SC")
+    } else if cfg!(windows) {
+        Some("Microsoft YaHei UI")
+    } else {
+        None
+    };
+    native
         .into_iter()
+        .chain(["Noto Sans CJK SC", "LXGW WenKai"])
         .find(|f| names.iter().any(|n| n == f))
 }
