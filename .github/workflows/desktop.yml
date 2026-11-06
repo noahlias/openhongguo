@@ -28,8 +28,8 @@ jobs:
         include:
           - { os: ubuntu-24.04, name: linux-x86_64 }
           # Homebrew's libraries require the macOS they were built on, so the
-          # oldest runner sets the oldest macOS the app opens on.
-          - { os: macos-14, name: macos-arm64 }
+          # runner sets the oldest macOS the app opens on (Info.plist says so).
+          - { os: macos-15, name: macos-arm64 }
           - { os: windows-2025, name: windows-x86_64 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -82,7 +82,7 @@ jobs:
             7z x -y -o"$dir" "$dir/$asset" > /dev/null
           done
           cd "$dir"
-          cp "$(find . -name ffmpeg.exe | head -1)" ffmpeg.exe
+          test -f ffmpeg.exe
           { echo "LIBRARY libmpv-2.dll"; echo "EXPORTS"
             dumpbin //NOLOGO //EXPORTS libmpv-2.dll | awk '$1 ~ /^[0-9]+$/ && $4 ~ /^mpv_/ {print $4}'
           } > mpv.def

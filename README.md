@@ -15,7 +15,7 @@
 | 平台 | 文件 | 怎么运行 |
 |---|---|---|
 | Linux x86_64 | `openhongguo-desktop_*_linux-x86_64.tar.gz` | 先装 libmpv 和 ffmpeg（Arch：`mpv ffmpeg`，Debian/Ubuntu：`libmpv2 ffmpeg`），解压后运行 `./ohg-desktop` |
-| macOS 14+（Apple 芯片） | `openhongguo-desktop_*_macos-arm64.dmg` | 打开 dmg，把 `openhongguo.app` 拖进“应用程序”，第一次打开前执行 `xattr -cr /Applications/openhongguo.app` |
+| macOS 15+（Apple 芯片） | `openhongguo-desktop_*_macos-arm64.dmg` | 打开 dmg，把 `openhongguo.app` 拖进“应用程序”，第一次打开前执行 `xattr -cr /Applications/openhongguo.app` |
 | Windows x64 | `openhongguo-desktop_*_windows-x86_64.zip` | 解压后运行 `ohg-desktop.exe`，旁边的 DLL 和 `ffmpeg.exe` 不要删。SmartScreen 拦截时点“更多信息 → 仍要运行” |
 
 安装包没有签名，所以 macOS 和 Windows 第一次打开时会拦截。macOS 和 Windows 的包自带 libmpv 和 ffmpeg（封面是 HEIC 格式，靠 ffmpeg 解码）。Linux 版在 Ubuntu 24.04 上构建，需要 glibc 2.39 或更新的系统。
@@ -59,7 +59,7 @@
 | 平台 | 准备 |
 |---|---|
 | Linux | 装 `mpv ffmpeg`（Arch）或 `libmpv-dev ffmpeg`（Debian/Ubuntu）。中文字体建议装 Noto CJK |
-| macOS | `brew install mpv ffmpeg`；打包成 dmg 用 [bundle-macos.sh](desktop/scripts/bundle-macos.sh)（还需要 `dylibbundler`） |
+| macOS | `brew install mpv ffmpeg pkgconf`（没有 pkgconf 时链接器找不到 libmpv）；打包成 dmg 用 [bundle-macos.sh](desktop/scripts/bundle-macos.sh)（还需要 `dylibbundler`） |
 | Windows | 用 MSVC 版 Rust；cgo 需要 MinGW 的 `gcc`；从 [mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake/releases) 下载 `mpv-dev-x86_64-*`，生成 `mpv.lib`，并设置 `MPV_LIBRARY_DIR` |
 
 ```sh
