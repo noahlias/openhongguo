@@ -27,6 +27,18 @@ dylibbundler -od -b -cd -ns \
   -d "$libs" -p @executable_path/../Frameworks/ \
   -s "$brew_prefix/lib"
 
+rpaths() { otool -l "$1" | awk '$2 == "LC_RPATH" {getline; getline; print $2}'; }
+
+# dylibbundler adds its rpath once per pass over a file, and dyld refuses
+# a binary with a duplicate LC_RPATH ("Library not loaded" at launch).
+for f in "$bin"/* "$libs"/*; do
+  for rp in $(rpaths "$f" | sort | uniq -d); do
+    while [ "$(rpaths "$f" | grep -cxF "$rp")" -gt 1 ]; do
+      install_name_tool -delete_rpath "$rp" "$f"
+    done
+  done
+done
+
 # Every Mach-O must load only the system and the bundle; anything else
 # (a Homebrew path, an unresolved @rpath) fails on a Mac without Homebrew.
 bad=0
@@ -39,6 +51,10 @@ for f in "$bin"/* "$libs"/*; do
       *) echo "outside the bundle: $f -> $dep"; bad=1 ;;
     esac
   done < <(otool -L "$f" | tail -n +2 | awk '{print $1}')
+  if [ -n "$(rpaths "$f" | sort | uniq -d)" ]; then
+    echo "duplicate LC_RPATH: $f"
+    bad=1
+  fi
 done
 # A library built for a newer macOS than Info.plist promises fails to load
 # there with "Library not loaded" instead of a clear message.

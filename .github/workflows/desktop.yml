@@ -120,18 +120,21 @@ jobs:
             RUST_LOG=info RUST_BACKTRACE=1 OHG_CONFIG_DIR="$RUNNER_TEMP/cfg" "$1" > "$2" 2>&1 &
             local pid=$!
             sleep 10
+            local alive=0
             if kill -0 "$pid" 2> /dev/null; then
               kill "$pid"; echo "== $1: running after 10 s"
             else
-              wait "$pid"; echo "== $1: exited with $?"
+              wait "$pid"; echo "== $1: exited with $?"; alive=1
             fi
             cat "$2"
+            return "$alive"
           }
           launch desktop/target/release/ohg-desktop "$RUNNER_TEMP/plain.log"
           launch dist/stage/openhongguo.app/Contents/MacOS/ohg-desktop "$RUNNER_TEMP/bundle.log"
+          bundled=$?
           report=$(ls -t ~/Library/Logs/DiagnosticReports/ohg-desktop* 2> /dev/null | head -1)
           [ -n "$report" ] && head -c 6000 "$report"
-          ! grep -E "dyld|Library not loaded" "$RUNNER_TEMP/bundle.log"
+          exit "$bundled"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
