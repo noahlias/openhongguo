@@ -1,0 +1,68 @@
+{
+  "name": "红果短剧",
+  "id": "dev.openhongguo.app",
+  "version": "0.1.0",
+  "build": 1,
+  "theme": {
+    "cssVars": {
+      "theme": {
+        "radius": "10px"
+      },
+      "light": {
+        "background": "#F7F7F8",
+        "foreground": "#1F1F1F",
+        "card": "#FFFFFF",
+        "card-foreground": "#1F1F1F",
+        "popover": "#FFFFFF",
+        "popover-foreground": "#1F1F1F",
+        "primary": "#E5484D",
+        "primary-foreground": "#FFFFFF",
+        "secondary": "#EFEFF1",
+        "secondary-foreground": "#1F1F1F",
+        "muted": "#E8E8EB",
+        "muted-foreground": "#6F6F6F",
+        "accent": "#E8E8EB",
+        "accent-foreground": "#1F1F1F",
+        "destructive": "#E5484D",
+        "border": "#DDDDE2",
+        "input": "#DDDDE2",
+        "ring": "#E5484D",
+        "faint": "#A0A0A6",
+        "gold": "#C98F00",
+        "orange": "#F76B15",
+        "success": "#30A46C",
+        "scrim": "rgba(0, 0, 0, 0.45)"
+      },
+      "dark": {
+        "background": "#0E0E10",
+        "foreground": "#ECECEE",
+        "card": "#1C1C1F",
+        "card-foreground": "#ECECEE",
+        "popover": "#1C1C1F",
+        "popover-foreground": "#ECECEE",
+        "primary": "#E5484D",
+        "primary-foreground": "#FFFFFF",
+        "secondary": "#131315",
+        "secondary-foreground": "#ECECEE",
+        "muted": "#26262A",
+        "muted-foreground": "#8E8E93",
+        "accent": "#26262A",
+        "accent-foreground": "#ECECEE",
+        "destructive": "#E5484D",
+        "border": "#2A2A2E",
+        "input": "#2A2A2E",
+        "ring": "#E5484D",
+        "faint": "#5A5A60",
+        "gold": "#F5B400",
+        "orange": "#F76B15",
+        "success": "#30A46C",
+        "scrim": "rgba(0, 0, 0, 0.62)"
+      }
+    }
+  },
+  "capabilities": {
+    "host": ["ohg.call", "ohg.cancel"],
+    "network": { "hosts": ["*.fqnovelpic.com"] },
+    "statusBar": true
+  }
+}

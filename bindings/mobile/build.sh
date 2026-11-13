@@ -6,6 +6,7 @@
 #   ./build.sh react-native   ../react-native 的 android/ 和 ios/
 #   ./build.sh flutter        ../flutter 的 android/ 和 ios/
 #   ./build.sh                以上全部
+#   ./build.sh android-app    仓库根目录 android/app（Android 应用，不在 all 里）
 #
 # 需要 gomobile（go install golang.org/x/mobile/cmd/gomobile@latest）。
 # Android 还需要 ANDROID_HOME、Android NDK 和 JDK 17 以上；iOS 需要 Xcode。
@@ -110,9 +111,13 @@ android) android ;;
 ios) ios ;;
 react-native) react_native ;;
 flutter) flutter ;;
+android-app)
+	core_android
+	put_android "$here/../../android/app"
+	;;
 all) android && ios && react_native && flutter ;;
 *)
-	echo "usage: $0 [android|ios|react-native|flutter|all]" >&2
+	echo "usage: $0 [android|ios|react-native|flutter|all|android-app]" >&2
 	exit 2
 	;;
 esac

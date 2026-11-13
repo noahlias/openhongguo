@@ -1,0 +1,9 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+# make android-app: the nsh release, its AARs, the gomobile core and the nsh bundle
+app/libs/
+app/src/main/jniLibs/
+app/src/main/assets/nsh/
+.nsh/

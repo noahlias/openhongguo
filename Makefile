@@ -12,7 +12,7 @@ endif
 endif
 
 .PHONY: help build cli node mobile gen test test-go test-node test-react-native test-flutter \
-	test-mobile test-android test-ios desktop install-desktop test-desktop
+	test-mobile test-android test-ios desktop install-desktop test-desktop android-app android-ui test-android-app
 
 help: ## 列出所有目标
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-18s %s\n", $$1, $$2}'
@@ -48,6 +48,17 @@ install-desktop: desktop ## 安装桌面客户端和启动器条目
 
 test-desktop: ## 桌面客户端的 rustfmt、clippy 和测试
 	cd desktop && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+
+# android/nsh.sh 下载固定版本的 nsh（CLI 和 aar），打印 CLI 的路径。
+android-app: android-ui ## 构建 Android 应用 android/app/build/outputs/apk/release/（需要 gomobile、Android SDK 和 JDK 17 以上）
+	bindings/mobile/build.sh android-app
+	cd android && ./gradlew --quiet assembleRelease
+
+android-ui: test-android-app ## 把 nsh 界面打包进 android/app/src/main/assets/nsh
+	nsh=$$(android/nsh.sh) && cd android/ui && "$$nsh" build --release --out ../app/src/main/assets/nsh
+
+test-android-app: ## Android 应用界面的 nsh 类型检查和测试
+	nsh=$$(android/nsh.sh) && cd android/ui && "$$nsh" check && "$$nsh" test
 
 test: test-go test-node test-react-native test-flutter ## 运行不需要移动端工具链的全部测试
 

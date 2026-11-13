@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- desktop/assets/openhongguo.svg -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <path
+        android:fillColor="#E5484D"
+        android:pathData="M72,16h112a56,56 0 0 1 56,56v112a56,56 0 0 1 -56,56h-112a56,56 0 0 1 -56,-56v-112a56,56 0 0 1 56,-56z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="16"
+        android:strokeLineJoin="round"
+        android:pathData="M104,80v96l80,-48z" />
+</vector>
