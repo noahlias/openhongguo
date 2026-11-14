@@ -211,6 +211,11 @@ impl Engine {
         let _ = self.mpv.set_property("mute", muted);
     }
 
+    /// mpv keeps the speed across `loadfile`, so it holds for later episodes.
+    pub fn set_speed(&self, speed: f64) {
+        let _ = self.mpv.set_property("speed", speed);
+    }
+
     pub fn dropped_frames(&self) -> i64 {
         self.mpv
             .get_property::<i64>("frame-drop-count")

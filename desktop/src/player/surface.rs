@@ -115,6 +115,10 @@ impl Player {
         self.engine.set_muted(!self.state.muted);
     }
 
+    pub fn set_speed(&mut self, speed: f64) {
+        self.engine.set_speed(speed);
+    }
+
     pub fn dropped_frames(&self) -> i64 {
         self.engine.dropped_frames()
     }

@@ -5,6 +5,8 @@
 //! three unavailable episodes skipped in a row, prefetch the next model, and
 //! write history at start, pause, seek, stop, every 15 s, and at the end.
 
+mod controls;
+mod rail;
 mod view;
 
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -21,6 +23,7 @@ use crate::ui::state::{self, Nav, PlayRequest};
 const MAX_UNAVAILABLE: u32 = 3;
 const RECORD_EVERY: Duration = Duration::from_secs(15);
 const CONTROLS_FOR: Duration = Duration::from_millis(2500);
+pub const SPEEDS: [f64; 6] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
 
 pub enum Status {
     Resolving,
@@ -48,8 +51,8 @@ pub struct Theater {
     menu: Option<Menu>,
     /// The user's choice; `None` follows the layout (open beside a portrait video).
     rail: Option<bool>,
-    /// The side space a portrait video leaves, worked out at each render.
-    room: Room,
+    /// Whether a portrait video leaves room for the rail, worked out at each render.
+    room: bool,
     seek: Entity<SliderState>,
     volume: Entity<SliderState>,
     scrubbing: bool,
@@ -60,16 +63,10 @@ pub struct Theater {
     _ticker: Task<()>,
 }
 
-/// What fits beside the video without shrinking it.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct Room {
-    pub rail: bool,
-    pub info: bool,
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum Menu {
     Quality,
+    Speed,
 }
 
 impl EventEmitter<Nav> for Theater {}
@@ -88,6 +85,8 @@ impl Theater {
         cx: &mut Context<Self>,
     ) -> Theater {
         let volume = state::ohg(cx).settings.volume;
+        let speed = state::ohg(cx).settings.speed;
+        player.update(cx, |p, _| p.set_speed(speed));
         cx.subscribe_in(&player, window, |this, _, e: &PlayerEvent, window, cx| {
             this.on_player(e, window, cx)
         })
@@ -140,7 +139,7 @@ impl Theater {
             activity: Instant::now(),
             menu: None,
             rail: None,
-            room: Room::default(),
+            room: false,
             seek,
             volume: vol,
             scrubbing: false,
@@ -492,6 +491,8 @@ impl Theater {
             "up" => self.player.update(cx, |p, _| step(p, 5.0)),
             "down" => self.player.update(cx, |p, _| step(p, -5.0)),
             "m" => self.player.update(cx, |p, _| p.toggle_mute()),
+            "[" => self.step_speed(-1, window, cx),
+            "]" => self.step_speed(1, window, cx),
             "f" => window.toggle_fullscreen(),
             "n" => {
                 if let Some(next) = self.next_episode(self.current.number) {
@@ -530,6 +531,38 @@ impl Theater {
         }
         self.unavailable_run = 0;
         self.start(ep, 0.0, cx);
+    }
+
+    fn speed(&self, cx: &App) -> f64 {
+        state::ohg(cx).settings.speed
+    }
+
+    pub fn set_speed(&mut self, speed: f64, window: &mut Window, cx: &mut Context<Self>) {
+        self.menu = None;
+        self.player.update(cx, |p, _| p.set_speed(speed));
+        if let Err(err) = state::update_settings(window, cx, |s| s.speed = speed) {
+            cx.emit(Nav::error(format!("{err:#}")));
+        }
+        cx.notify();
+    }
+
+    fn step_speed(&mut self, by: isize, window: &mut Window, cx: &mut Context<Self>) {
+        let now = self.speed(cx);
+        let at = SPEEDS
+            .iter()
+            .position(|s| *s >= now)
+            .unwrap_or(SPEEDS.len() - 1);
+        let to = at.saturating_add_signed(by).min(SPEEDS.len() - 1);
+        self.set_speed(SPEEDS[to], window, cx);
+    }
+
+    fn toggle_menu(&mut self, menu: Menu, cx: &mut Context<Self>) {
+        self.menu = if self.menu == Some(menu) {
+            None
+        } else {
+            Some(menu)
+        };
+        cx.notify();
     }
 
     pub fn set_quality(&mut self, quality: String, window: &mut Window, cx: &mut Context<Self>) {

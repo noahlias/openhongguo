@@ -20,6 +20,7 @@ pub struct Settings {
     pub quality: String,
     pub autoplay: bool,
     pub volume: f64,
+    pub speed: f64,
     pub window: WindowSize,
     /// Shows the debug panel (F12).
     pub debug: bool,
@@ -40,6 +41,7 @@ impl Default for Settings {
             quality: "best".into(),
             autoplay: true,
             volume: 80.0,
+            speed: 1.0,
             window: WindowSize {
                 width: 1280.0,
                 height: 820.0,
@@ -110,6 +112,7 @@ mod tests {
         let partial = Settings::load(&dir).unwrap();
         assert!(!partial.autoplay);
         assert_eq!(partial.quality, "best");
+        assert_eq!(partial.speed, 1.0);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
