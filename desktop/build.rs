@@ -34,9 +34,14 @@ fn main() {
         go_build(&root, "c-shared", &dll);
         import_lib(&out);
         println!("cargo:rustc-link-lib=dylib=ohg");
-        // OUT_DIR is target/<profile>/build/<pkg>/out; the exe and tests run
+        // OUT_DIR is target/<profile>/build/<pkg>-<hash>/out, or since Cargo
+        // 1.100 target/<profile>/build/<pkg>/<hash>/out; the exe and tests run
         // from target/<profile> and target/<profile>/deps.
-        let profile_dir = out.ancestors().nth(3).unwrap();
+        let profile_dir = out
+            .ancestors()
+            .find(|d| d.file_name().is_some_and(|n| n == "build"))
+            .and_then(Path::parent)
+            .expect("OUT_DIR lies under target/<profile>/build");
         for dir in [profile_dir.to_path_buf(), profile_dir.join("deps")] {
             fs::create_dir_all(&dir).unwrap();
             fs::copy(&dll, dir.join("ohg.dll")).unwrap();
